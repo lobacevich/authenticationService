@@ -23,6 +23,6 @@ spring:
     change-log: classpath:db/changelog/changelog.yaml
 
 jwt:
-  secret: ${JWT_SECRET:VKs3X6p9e8R2tY5w7z9C1f4H6J8kL0nP2qR4sT6uV8wX0yZ2b4c6d8e0f2g4h6j8k0}
+  secret: ${JWT_SECRET}
   access-token-expiration: ${JWT_ACCESS_EXPIRATION:900000}
   refresh-token-expiration: ${JWT_REFRESH_EXPIRATION:604800000}
