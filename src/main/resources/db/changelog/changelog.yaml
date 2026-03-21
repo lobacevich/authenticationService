@@ -1,0 +1,15 @@
+databaseChangeLog:
+  - changeSet:
+      id: create_credentials_table
+      author: Labatsevich Ihar
+      changes:
+        - sqlFile:
+            path: db/changelog/sql/01.create_credentials_table.sql
+            encoding: utf8
+  - changeSet:
+      id: add_admin_to_credentials_table
+      author: Labatsevich Ihar
+      changes:
+        - sqlFile:
+            path: db/changelog/sql/02.add_admin_to_credentials_table.sql
+            encoding: utf8
