@@ -3,6 +3,7 @@ package by.lobacevich.auth.exceptionhandler;
 import by.lobacevich.auth.dto.response.ErrorDto;
 import by.lobacevich.auth.exception.EntityNotFoundException;
 import by.lobacevich.auth.exception.InvalidDataException;
+import io.jsonwebtoken.JwtException;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.HttpStatusCode;
@@ -19,8 +20,10 @@ import java.util.List;
 @RestControllerAdvice
 public class AppExceptionHandler extends ResponseEntityExceptionHandler {
 
-    @ExceptionHandler(InvalidDataException.class)
-    public ResponseEntity<ErrorDto> handleInvalidDataException(InvalidDataException e) {
+    @ExceptionHandler({InvalidDataException.class,
+            JwtException.class,
+            IllegalArgumentException.class})
+    public ResponseEntity<ErrorDto> handleInvalidDataException(Exception e) {
         return new ResponseEntity<>(new ErrorDto(e.getMessage(), e.getClass().getSimpleName()), HttpStatus.BAD_REQUEST);
     }
 
@@ -41,6 +44,6 @@ public class AppExceptionHandler extends ResponseEntityExceptionHandler {
 
     @ExceptionHandler(Exception.class)
     public ResponseEntity<ErrorDto> handleException(Exception e) {
-        return new ResponseEntity<>(new ErrorDto(e.getMessage(), e.getClass().getSimpleName()), HttpStatus.BAD_REQUEST);
+        return new ResponseEntity<>(new ErrorDto(e.getMessage(), e.getClass().getSimpleName()), HttpStatus.INTERNAL_SERVER_ERROR);
     }
 }

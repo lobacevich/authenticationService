@@ -12,14 +12,19 @@ import java.util.Date;
 @Service
 public class JwtTokenService {
 
-    @Value("${jwt.secret}")
-    private String secret;
+    private final String secret;
+    private final long accessTokenExpiration;
+    private final long refreshTokenExpiration;
 
-    @Value("${jwt.access-token-expiration}")
-    private long accessTokenExpiration;
-
-    @Value("${jwt.refresh-token-expiration}")
-    private long refreshTokenExpiration;
+    public JwtTokenService(
+            @Value("${jwt.secret}") String secret,
+            @Value("${jwt.access-token-expiration}") long accessTokenExpiration,
+            @Value("${jwt.refresh-token-expiration}") long refreshTokenExpiration
+    ) {
+        this.secret = secret;
+        this.accessTokenExpiration = accessTokenExpiration;
+        this.refreshTokenExpiration = refreshTokenExpiration;
+    }
 
     public String generateToken(Long userId, Role role) {
         return Jwts.builder()

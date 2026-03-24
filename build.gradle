@@ -3,6 +3,7 @@ plugins {
     id 'org.springframework.boot' version '3.5.10'
     id 'io.spring.dependency-management' version '1.1.6'
     id 'io.freefair.lombok' version '8.6'
+    id "org.sonarqube" version "7.2.3.7755"
 }
 
 group = 'by.lobacevich'
@@ -31,9 +32,9 @@ dependencies {
     runtimeOnly 'io.jsonwebtoken:jjwt-impl:0.12.6'
     runtimeOnly 'io.jsonwebtoken:jjwt-jackson:0.12.6'
 
-
-    testImplementation platform('org.junit:junit-bom:5.10.0')
-    testImplementation 'org.junit.jupiter:junit-jupiter'
+    testImplementation 'org.springframework.boot:spring-boot-starter-test'
+    testImplementation 'org.testcontainers:junit-jupiter'
+    testImplementation 'org.testcontainers:postgresql'
 }
 
 test {
