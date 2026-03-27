@@ -1,6 +1,7 @@
 package by.lobacevich.auth.service;
 
 import by.lobacevich.auth.entity.enums.Role;
+import by.lobacevich.auth.entity.enums.TokenType;
 import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.JwtException;
 import org.junit.jupiter.api.Test;
@@ -25,13 +26,14 @@ class JwtTokenServiceTest {
             REFRESH_EXPIRATION);
 
     @Test
-    void generateToken_ShouldGenerateTokenWithUserIdAndRole() {
-        String token = service.generateToken(ID, Role.ROLE_USER);
+    void generateAccessToken_ShouldGenerateTokenWithUserIdAndRole() {
+        String accessToken = service.generateAccessToken(ID, Role.ROLE_USER);
 
-        Claims claims = service.parse(token);
+        Claims claims = service.parse(accessToken);
 
         assertEquals(ID, Long.parseLong(claims.getSubject()));
         assertEquals(Role.ROLE_USER.name(), claims.get("role"));
+        assertEquals(TokenType.ACCESS.name(), claims.get("type"));
         assertTrue(claims.getExpiration().after(new Date()));
     }
 
@@ -42,6 +44,7 @@ class JwtTokenServiceTest {
         Claims claims = service.parse(refreshToken);
 
         assertEquals(ID, Long.parseLong(claims.getSubject()));
+        assertEquals(TokenType.REFRESH.name(), claims.get("type"));
         assertNull(claims.get("role"));
     }
 
