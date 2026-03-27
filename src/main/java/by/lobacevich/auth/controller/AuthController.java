@@ -3,6 +3,7 @@ package by.lobacevich.auth.controller;
 import by.lobacevich.auth.dto.request.LoginRequestDto;
 import by.lobacevich.auth.dto.request.RegisterRequestDto;
 import by.lobacevich.auth.dto.request.TokenRequestDto;
+import by.lobacevich.auth.dto.response.JwtAccessPayLoadDto;
 import by.lobacevich.auth.dto.response.TokenResponseDto;
 import by.lobacevich.auth.dto.response.UserDtoResponse;
 import by.lobacevich.auth.service.AuthService;
@@ -33,9 +34,8 @@ public class AuthController {
     }
 
     @PostMapping("/validate")
-    public ResponseEntity<Void> validate(@Valid @RequestBody TokenRequestDto tokenDto) {
-        authService.validate(tokenDto.token());
-        return ResponseEntity.ok().build();
+    public ResponseEntity<Object> validate(@Valid @RequestBody TokenRequestDto tokenDto) {
+        return ResponseEntity.ok(authService.validate(tokenDto.token()));
     }
 
     @PostMapping("/refresh")

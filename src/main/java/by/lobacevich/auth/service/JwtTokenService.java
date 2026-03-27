@@ -1,6 +1,7 @@
 package by.lobacevich.auth.service;
 
 import by.lobacevich.auth.entity.enums.Role;
+import by.lobacevich.auth.entity.enums.TokenType;
 import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.security.Keys;
@@ -26,10 +27,11 @@ public class JwtTokenService {
         this.refreshTokenExpiration = refreshTokenExpiration;
     }
 
-    public String generateToken(Long userId, Role role) {
+    public String generateAccessToken(Long userId, Role role) {
         return Jwts.builder()
                 .subject(userId.toString())
-                .claim("role", role.toString())
+                .claim("role", role)
+                .claim("type", TokenType.ACCESS)
                 .expiration(new Date(System.currentTimeMillis() + accessTokenExpiration))
                 .signWith(Keys.hmacShaKeyFor(secret.getBytes()))
                 .compact();
@@ -38,6 +40,7 @@ public class JwtTokenService {
     public String generateRefreshToken(Long userId) {
         return Jwts.builder()
                 .subject(userId.toString())
+                .claim("type", TokenType.REFRESH)
                 .expiration(new Date(System.currentTimeMillis() + refreshTokenExpiration))
                 .signWith(Keys.hmacShaKeyFor(secret.getBytes()))
                 .compact();

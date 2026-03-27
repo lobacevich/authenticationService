@@ -3,13 +3,18 @@ package by.lobacevich.auth.service.impl;
 import by.lobacevich.auth.dto.request.LoginRequestDto;
 import by.lobacevich.auth.dto.request.RegisterRequestDto;
 import by.lobacevich.auth.dto.request.TokenRequestDto;
+import by.lobacevich.auth.dto.response.JwtAccessPayLoadDto;
+import by.lobacevich.auth.dto.response.JwtRefreshPayLoadDto;
 import by.lobacevich.auth.dto.response.TokenResponseDto;
 import by.lobacevich.auth.entity.Credential;
 import by.lobacevich.auth.entity.enums.Role;
+import by.lobacevich.auth.entity.enums.TokenType;
 import by.lobacevich.auth.exception.EntityNotFoundException;
+import by.lobacevich.auth.exception.IncorrectPasswordException;
 import by.lobacevich.auth.exception.InvalidDataException;
 import by.lobacevich.auth.repository.CredentialRepository;
 import by.lobacevich.auth.service.JwtTokenService;
+import by.lobacevich.auth.service.RefreshTokenService;
 import io.jsonwebtoken.Claims;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -24,6 +29,7 @@ import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.mockito.Mockito.doNothing;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -37,7 +43,9 @@ class AuthServiceImplTest {
     public static final String PASSWORD_HASH = "encoded";
     public static final String TOKEN = "access";
     public static final String REFRESH_TOKEN = "refresh";
+    public static final String NEW_REFRESH_TOKEN = "newRefresh";
     public static final RegisterRequestDto REGISTER_DTO = new RegisterRequestDto(ID, LOGIN, PASSWORD);
+    public static final String INCORRECT_TOKEN_TYPE = "INCORRECT";
 
     @Mock
     private CredentialRepository repository;
@@ -47,6 +55,9 @@ class AuthServiceImplTest {
 
     @Mock
     private JwtTokenService tokenService;
+
+    @Mock
+    private RefreshTokenService refreshTokenService;
 
     @Mock
     private Credential user;
@@ -69,7 +80,6 @@ class AuthServiceImplTest {
     @Test
     void register_ShouldSaveUser() {
         when(repository.existsById(ID)).thenReturn(false);
-        when(repository.existsByLogin(LOGIN)).thenReturn(false);
         when(encoder.encode(PASSWORD)).thenReturn(PASSWORD_HASH);
 
         service.register(REGISTER_DTO);
@@ -91,14 +101,6 @@ class AuthServiceImplTest {
     }
 
     @Test
-    void register_ShouldThrowInvalidDataExceptionByLogin() {
-        when(repository.existsById(ID)).thenReturn(false);
-        when(repository.existsByLogin(LOGIN)).thenReturn(true);
-
-        assertThrows(InvalidDataException.class, () -> service.register(REGISTER_DTO));
-    }
-
-    @Test
     void login_ShouldReturnTokenResponseDto() {
         when(loginDto.login()).thenReturn(LOGIN);
         when(repository.findByLogin(LOGIN)).thenReturn(Optional.of(user));
@@ -107,11 +109,13 @@ class AuthServiceImplTest {
         when(encoder.matches(PASSWORD, PASSWORD_HASH)).thenReturn(true);
         when(user.getUserId()).thenReturn(ID);
         when(user.getRole()).thenReturn(Role.ROLE_USER);
-        when(tokenService.generateToken(ID, Role.ROLE_USER)).thenReturn(TOKEN);
+        when(tokenService.generateAccessToken(ID, Role.ROLE_USER)).thenReturn(TOKEN);
         when(tokenService.generateRefreshToken(ID)).thenReturn(REFRESH_TOKEN);
+        doNothing().when(refreshTokenService).save(REFRESH_TOKEN, user);
 
         TokenResponseDto actual = service.login(loginDto);
 
+        verify(refreshTokenService, times(1)).save(REFRESH_TOKEN, user);
         assertEquals(TOKEN, actual.accessToken());
         assertEquals(REFRESH_TOKEN, actual.refreshToken());
     }
@@ -125,14 +129,14 @@ class AuthServiceImplTest {
     }
 
     @Test
-    void login_ShouldThrowInvalidDataException() {
+    void login_ShouldThrowIncorrectPasswordException() {
         when(loginDto.login()).thenReturn(LOGIN);
         when(repository.findByLogin(LOGIN)).thenReturn(Optional.of(user));
         when(loginDto.password()).thenReturn(PASSWORD);
         when(user.getPasswordHash()).thenReturn(PASSWORD_HASH);
         when(encoder.matches(PASSWORD, PASSWORD_HASH)).thenReturn(false);
 
-        assertThrows(InvalidDataException.class, () -> service.login(loginDto));
+        assertThrows(IncorrectPasswordException.class, () -> service.login(loginDto));
     }
 
     @Test
@@ -142,13 +146,15 @@ class AuthServiceImplTest {
         when(claims.getSubject()).thenReturn(ID.toString());
         when(repository.findById(ID)).thenReturn(Optional.of(user));
         when(user.getRole()).thenReturn(Role.ROLE_USER);
-        when(tokenService.generateToken(ID, Role.ROLE_USER)).thenReturn(TOKEN);
-        when(tokenService.generateRefreshToken(ID)).thenReturn(REFRESH_TOKEN);
+        when(tokenService.generateAccessToken(ID, Role.ROLE_USER)).thenReturn(TOKEN);
+        when(tokenService.generateRefreshToken(ID)).thenReturn(NEW_REFRESH_TOKEN);
+        doNothing().when(refreshTokenService).refresh(REFRESH_TOKEN, NEW_REFRESH_TOKEN);
 
         TokenResponseDto actual = service.refresh(tokenRequestDto);
 
+        verify(refreshTokenService, times(1)).refresh(REFRESH_TOKEN, NEW_REFRESH_TOKEN);
         assertEquals(TOKEN, actual.accessToken());
-        assertEquals(REFRESH_TOKEN, actual.refreshToken());
+        assertEquals(NEW_REFRESH_TOKEN, actual.refreshToken());
     }
 
     @Test
@@ -162,9 +168,36 @@ class AuthServiceImplTest {
     }
 
     @Test
-    void validate_ShouldCallParseMethodOfJwtTokenService() {
-        service.validate(TOKEN);
+    void validate_ShouldReturnJwtAccessPayLoadDto() {
+        when(tokenService.parse(TOKEN)).thenReturn(claims);
+        when(claims.get("type", String.class)).thenReturn(TokenType.ACCESS.name());
+        when(claims.getSubject()).thenReturn(ID.toString());
+        when(claims.get("role", String.class)).thenReturn(Role.ROLE_USER.name());
 
-        verify(tokenService, times(1)).parse(TOKEN);
+        JwtAccessPayLoadDto actual = (JwtAccessPayLoadDto) service.validate(TOKEN);
+
+        assertEquals(TokenType.ACCESS.name(), actual.type());
+        assertEquals(Role.ROLE_USER.name(), actual.role());
+        assertEquals(ID, actual.userId());
+    }
+
+    @Test
+    void validate_ShouldReturnJwtRefreshPayLoadDto() {
+        when(tokenService.parse(REFRESH_TOKEN)).thenReturn(claims);
+        when(claims.get("type", String.class)).thenReturn(TokenType.REFRESH.name());
+        when(claims.getSubject()).thenReturn(ID.toString());
+
+        JwtRefreshPayLoadDto actual = (JwtRefreshPayLoadDto) service.validate(REFRESH_TOKEN);
+
+        assertEquals(TokenType.REFRESH.name(), actual.type());
+        assertEquals(ID, actual.userId());
+    }
+
+    @Test
+    void validate_ShouldThrowInvalidDataException() {
+        when(tokenService.parse(TOKEN)).thenReturn(claims);
+        when(claims.get("type", String.class)).thenReturn(INCORRECT_TOKEN_TYPE);
+
+        assertThrows(InvalidDataException.class, () -> service.validate(TOKEN));
     }
 }
