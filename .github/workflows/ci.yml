@@ -48,7 +48,11 @@ jobs:
           password: ${{ secrets.DOCKER_PASSWORD }}
 
       - name: Build Image
-        run: docker build -t $DOCKER_USERNAME/user-service:latest .
+        env:
+          DOCKER_USERNAME: ${{ secrets.DOCKER_USERNAME }}
+        run: docker build -t $DOCKER_USERNAME/authentication-service:latest .
 
       - name: Push Image
-        run: docker push $DOCKER_USERNAME/user-service:latest
+        env:
+          DOCKER_USERNAME: ${{ secrets.DOCKER_USERNAME }}
+        run: docker push $DOCKER_USERNAME/authentication-service:latest
