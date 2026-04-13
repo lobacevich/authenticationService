@@ -21,8 +21,6 @@ java {
 jacocoTestReport {
     reports {
         xml.required = true
-        html.required = true
-        html.outputLocation = layout.buildDirectory.dir('reports/jacoco/html')
     }
 }
 
