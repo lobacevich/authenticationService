@@ -1,2 +1,4 @@
 server:
   port: 8081
+
+userClient.url: ${USER_SERVICE_URL}

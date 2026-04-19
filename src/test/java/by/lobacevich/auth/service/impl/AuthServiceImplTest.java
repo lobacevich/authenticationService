@@ -1,7 +1,7 @@
 package by.lobacevich.auth.service.impl;
 
+import by.lobacevich.auth.dto.inner.AuthRegisterDto;
 import by.lobacevich.auth.dto.request.LoginRequestDto;
-import by.lobacevich.auth.dto.request.RegisterRequestDto;
 import by.lobacevich.auth.dto.request.TokenRequestDto;
 import by.lobacevich.auth.dto.response.JwtAccessPayLoadDto;
 import by.lobacevich.auth.dto.response.JwtRefreshPayLoadDto;
@@ -44,7 +44,7 @@ class AuthServiceImplTest {
     public static final String TOKEN = "access";
     public static final String REFRESH_TOKEN = "refresh";
     public static final String NEW_REFRESH_TOKEN = "newRefresh";
-    public static final RegisterRequestDto REGISTER_DTO = new RegisterRequestDto(ID, LOGIN, PASSWORD);
+    public static final AuthRegisterDto REGISTER_DTO = new AuthRegisterDto(LOGIN, PASSWORD, ID);
     public static final String INCORRECT_TOKEN_TYPE = "INCORRECT";
 
     @Mock

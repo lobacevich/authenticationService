@@ -1,12 +1,12 @@
 package by.lobacevich.auth.service.impl;
 
+import by.lobacevich.auth.dto.inner.AuthRegisterDto;
+import by.lobacevich.auth.dto.inner.AuthRegisteredDto;
 import by.lobacevich.auth.dto.request.LoginRequestDto;
-import by.lobacevich.auth.dto.request.RegisterRequestDto;
 import by.lobacevich.auth.dto.request.TokenRequestDto;
 import by.lobacevich.auth.dto.response.JwtAccessPayLoadDto;
 import by.lobacevich.auth.dto.response.JwtRefreshPayLoadDto;
 import by.lobacevich.auth.dto.response.TokenResponseDto;
-import by.lobacevich.auth.dto.response.UserDtoResponse;
 import by.lobacevich.auth.entity.Credential;
 import by.lobacevich.auth.entity.enums.TokenType;
 import by.lobacevich.auth.exception.EntityNotFoundException;
@@ -32,7 +32,7 @@ public class AuthServiceImpl implements AuthService {
     private final RefreshTokenService refreshTokenService;
 
     @Override
-    public UserDtoResponse register(RegisterRequestDto dto) {
+    public AuthRegisteredDto register(AuthRegisterDto dto) {
         if (repository.existsById(dto.userId())) {
             throw new InvalidDataException("User with id " + dto.userId() + " already exists");
         }
@@ -43,8 +43,7 @@ public class AuthServiceImpl implements AuthService {
                 .passwordHash(encoder.encode(dto.password()))
                 .build();
         repository.save(credential);
-        return new UserDtoResponse(credential.getLogin(),
-                credential.getUserId(),
+        return new AuthRegisteredDto(credential.getLogin(),
                 credential.getRole());
     }
 

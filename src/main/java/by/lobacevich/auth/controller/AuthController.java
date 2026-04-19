@@ -1,10 +1,11 @@
 package by.lobacevich.auth.controller;
 
+import by.lobacevich.auth.dto.request.FullRequestDto;
 import by.lobacevich.auth.dto.request.LoginRequestDto;
-import by.lobacevich.auth.dto.request.RegisterRequestDto;
 import by.lobacevich.auth.dto.request.TokenRequestDto;
+import by.lobacevich.auth.dto.response.FullDtoResponse;
 import by.lobacevich.auth.dto.response.TokenResponseDto;
-import by.lobacevich.auth.dto.response.UserDtoResponse;
+import by.lobacevich.auth.orchestrator.RegistrationOrchestrator;
 import by.lobacevich.auth.service.AuthService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -25,6 +26,7 @@ import org.springframework.web.bind.annotation.RestController;
 public class AuthController {
 
     private final AuthService authService;
+    private final RegistrationOrchestrator orchestrator;
 
     /**
      * Registers a new user.
@@ -39,8 +41,8 @@ public class AuthController {
      * </ul>
      */
     @PostMapping("/register")
-    public ResponseEntity<UserDtoResponse> register(@Valid @RequestBody RegisterRequestDto dto) {
-        return new ResponseEntity<>(authService.register(dto), HttpStatus.CREATED);
+    public ResponseEntity<FullDtoResponse> register(@Valid @RequestBody FullRequestDto dto) {
+        return new ResponseEntity<>(orchestrator.register(dto), HttpStatus.CREATED);
     }
 
     /**

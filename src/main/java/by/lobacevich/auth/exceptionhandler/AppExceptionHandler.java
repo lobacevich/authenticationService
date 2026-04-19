@@ -4,6 +4,8 @@ import by.lobacevich.auth.dto.response.ErrorDto;
 import by.lobacevich.auth.exception.EntityNotFoundException;
 import by.lobacevich.auth.exception.IncorrectPasswordException;
 import by.lobacevich.auth.exception.InvalidDataException;
+import by.lobacevich.auth.exception.ServiceException;
+import by.lobacevich.auth.exception.ServiceUnavailableException;
 import io.jsonwebtoken.JwtException;
 import lombok.extern.log4j.Log4j2;
 import org.springframework.dao.DataIntegrityViolationException;
@@ -25,17 +27,19 @@ import java.util.List;
 @RestControllerAdvice
 public class AppExceptionHandler extends ResponseEntityExceptionHandler {
 
+    private static final String ERROR_LOG_FRAME = "{}, {}";
+
     @ExceptionHandler({InvalidDataException.class,
             JwtException.class,
             IllegalArgumentException.class})
     public ResponseEntity<ErrorDto> handleInvalidDataException(Exception e) {
-        log.error("{}/{}", e.getMessage(), e.getClass().getSimpleName());
+        log.error(ERROR_LOG_FRAME, e.getMessage(), e.getClass().getSimpleName());
         return new ResponseEntity<>(new ErrorDto(e.getMessage()), HttpStatus.BAD_REQUEST);
     }
 
     @ExceptionHandler(DataIntegrityViolationException.class)
     public ResponseEntity<ErrorDto> handleDataIntegrityViolationException(Exception e) {
-        log.error("{}/{}", e.getMessage(), e.getClass().getSimpleName());
+        log.error(ERROR_LOG_FRAME, e.getMessage(), e.getClass().getSimpleName());
         return new ResponseEntity<>(new ErrorDto("Login already exists"), HttpStatus.BAD_REQUEST);
     }
 
@@ -64,9 +68,21 @@ public class AppExceptionHandler extends ResponseEntityExceptionHandler {
         return new ResponseEntity<>(new ErrorDto(e.getMessage()), HttpStatus.FORBIDDEN);
     }
 
+    @ExceptionHandler(ServiceException.class)
+    public ResponseEntity<String> handleServiceException(ServiceException e) {
+        log.error(ERROR_LOG_FRAME, e.getMessage(), e.getStackTrace());
+        return new ResponseEntity<>(e.getMessage(), e.getStatusCode());
+    }
+
+    @ExceptionHandler(ServiceUnavailableException.class)
+    public ResponseEntity<ErrorDto> handleServiceUnavailableException(ServiceUnavailableException e) {
+        log.error(ERROR_LOG_FRAME, e.getMessage(), e.getStackTrace());
+        return new ResponseEntity<>(new ErrorDto(e.getMessage()), HttpStatus.SERVICE_UNAVAILABLE);
+    }
+
     @ExceptionHandler(Exception.class)
     public ResponseEntity<ErrorDto> handleException(Exception e) {
-        log.error("{}/{}/{}", "Unhandled exception", e.getMessage(), e.getClass().getSimpleName());
+        log.error("{}, {}, {}", "Unhandled exception", e.getMessage(), e.getClass().getSimpleName());
         return new ResponseEntity<>(new ErrorDto("Internal server error"), HttpStatus.INTERNAL_SERVER_ERROR);
     }
 }
