@@ -1,10 +1,10 @@
 package by.lobacevich.auth.service;
 
+import by.lobacevich.auth.dto.inner.AuthRegisterDto;
+import by.lobacevich.auth.dto.inner.AuthRegisteredDto;
 import by.lobacevich.auth.dto.request.LoginRequestDto;
-import by.lobacevich.auth.dto.request.RegisterRequestDto;
 import by.lobacevich.auth.dto.request.TokenRequestDto;
 import by.lobacevich.auth.dto.response.TokenResponseDto;
-import by.lobacevich.auth.dto.response.UserDtoResponse;
 
 /**
  * Service for user authentication and registration.
@@ -18,7 +18,7 @@ public interface AuthService {
      * @return created user info (login, userId, role)
      * @throws InvalidDataException if a user with the given userId already exists
      */
-    UserDtoResponse register(RegisterRequestDto dto);
+    AuthRegisteredDto register(AuthRegisterDto dto);
 
     /**
      * Authenticates a user by login and password.

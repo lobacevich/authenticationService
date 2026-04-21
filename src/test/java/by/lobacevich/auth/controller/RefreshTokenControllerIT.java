@@ -1,7 +1,7 @@
 package by.lobacevich.auth.controller;
 
+import by.lobacevich.auth.dto.inner.AuthRegisterDto;
 import by.lobacevich.auth.dto.request.LoginRequestDto;
-import by.lobacevich.auth.dto.request.RegisterRequestDto;
 import by.lobacevich.auth.dto.request.TokenRequestDto;
 import by.lobacevich.auth.dto.response.TokenResponseDto;
 import by.lobacevich.auth.entity.enums.Role;
@@ -75,7 +75,7 @@ public class RefreshTokenControllerIT {
                         List.of(new SimpleGrantedAuthority(Role.ROLE_ADMIN.name()))
                 );
 
-        authService.register(new RegisterRequestDto(1L, "user1", "123"));
+        authService.register(new AuthRegisterDto("user1", "123", 1L));
         TokenResponseDto tokenDto = authService.login(new LoginRequestDto("user1", "123"));
 
         mockMvc.perform(delete("/tokens")
@@ -88,8 +88,8 @@ public class RefreshTokenControllerIT {
     @Test
     void delete_ShouldReturnUnauthorisedStatusCode() throws Exception {
         mockMvc.perform(delete("/tokens")
-                .contentType(MediaType.APPLICATION_JSON)
-                .content(objectMapper.writeValueAsBytes(new TokenRequestDto("TOKEN"))))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsBytes(new TokenRequestDto("TOKEN"))))
                 .andExpect(status().isUnauthorized());
     }
 
@@ -102,8 +102,8 @@ public class RefreshTokenControllerIT {
                         List.of(new SimpleGrantedAuthority(Role.ROLE_USER.name()))
                 );
         mockMvc.perform(delete("/tokens")
-                .with(authentication(auth))
-                .contentType(MediaType.APPLICATION_JSON)
+                        .with(authentication(auth))
+                        .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsBytes(new TokenRequestDto("TOKEN"))))
                 .andExpect(status().isForbidden());
     }

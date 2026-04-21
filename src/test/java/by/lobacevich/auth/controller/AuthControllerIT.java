@@ -5,9 +5,13 @@ import by.lobacevich.auth.entity.Credential;
 import by.lobacevich.auth.repository.CredentialRepository;
 import by.lobacevich.auth.service.JwtTokenService;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.github.tomakehurst.wiremock.client.WireMock;
+import com.github.tomakehurst.wiremock.core.WireMockConfiguration;
+import com.github.tomakehurst.wiremock.junit5.WireMockExtension;
 import io.jsonwebtoken.Claims;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.RegisterExtension;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -22,6 +26,10 @@ import org.testcontainers.containers.PostgreSQLContainer;
 import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
 
+import static com.github.tomakehurst.wiremock.client.WireMock.aResponse;
+import static com.github.tomakehurst.wiremock.client.WireMock.deleteRequestedFor;
+import static com.github.tomakehurst.wiremock.client.WireMock.exactly;
+import static com.github.tomakehurst.wiremock.client.WireMock.urlPathEqualTo;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
@@ -32,6 +40,34 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 @ActiveProfiles("test")
 @AutoConfigureMockMvc
 public class AuthControllerIT {
+
+    private static final String FULL_REQUEST_DTO = """
+            {
+                "login": "login",
+                "password": "password",
+                "name": "John",
+                "surname": "Doe",
+                "birthDate": "1990-01-01",
+                "email": "john@example.com"
+            }
+            """;
+    private static final String USER_RESPONSE = """
+            {
+                "id": 1,
+                "name": "John",
+                "surname": "Doe",
+                "birthDate": "1990-01-01",
+                "email": "john@example.com",
+                "active": true,
+                "createdAt": "2026-01-01T10:00:00",
+                "updatedAt": "2026-01-01T10:00:00"
+            }
+            """;
+    private static final String DUPLICATE_EMAIL = """
+            {
+                "message": "Duplicate email"
+            }
+            """;
 
     @Autowired
     private JwtTokenService service;
@@ -56,6 +92,11 @@ public class AuthControllerIT {
                     .withPassword("test")
                     .withReuse(true);
 
+    @RegisterExtension
+    static WireMockExtension wireMock = WireMockExtension.newInstance()
+            .options(WireMockConfiguration.wireMockConfig().dynamicPort())
+            .build();
+
     @DynamicPropertySource
     static void configure(DynamicPropertyRegistry registry) {
         registry.add("spring.datasource.url", postgres::getJdbcUrl);
@@ -64,29 +105,101 @@ public class AuthControllerIT {
         registry.add("jwt.secret", () -> "VKs3X6p9e8R2tY5w7z9C1f4H6J8kL0nP2qR4sT6uV8wX0yZ2b4c6d8e0f2g4h6j8k0");
         registry.add("jwt.accessTokenExpiration", () -> "900000");
         registry.add("jwt.refreshTokenExpiration", () -> "604800000");
+        registry.add("userClient.url", () -> wireMock.baseUrl());
     }
 
     @BeforeEach
-    void cleanDb() {
+    void cleanDbAndWireMock() {
         repository.deleteAll();
+        wireMock.resetAll();
     }
 
     @Test
     void register_ShouldReturnUserDtoResponse() throws Exception {
-        String createJson = """
-                {
-                  "userId": 1,
-                  "login": "user1",
-                  "password": "password"
-                }
-                """;
+        wireMock.stubFor(WireMock.post(urlPathEqualTo("/users"))
+                .willReturn(aResponse()
+                        .withStatus(201)
+                        .withHeader("Content-Type", "application/json")
+                        .withBody(USER_RESPONSE)));
 
         mockMvc.perform(post("/auth/register")
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(createJson))
+                        .content(FULL_REQUEST_DTO))
                 .andExpect(status().isCreated())
-                .andExpect(jsonPath("$.login").value("user1"))
-                .andExpect(jsonPath("$.role").value("ROLE_USER"));
+                .andExpect(jsonPath("$.id").value(1))
+                .andExpect(jsonPath("$.login").value("login"))
+                .andExpect(jsonPath("$.name").value("John"));
+    }
+
+    @Test
+    void register_ShouldReturnErrorWhenUserServiceFails() throws Exception {
+        wireMock.stubFor(WireMock.post(urlPathEqualTo("/users"))
+                .willReturn(aResponse()
+                        .withStatus(400)
+                        .withHeader("Content-Type", "application/json")
+                        .withBody(DUPLICATE_EMAIL)));
+
+        mockMvc.perform(post("/auth/register")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(FULL_REQUEST_DTO))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.message").value("Duplicate email"));
+    }
+
+    @Test
+    void register_ShouldReturnErrorWhenAuthServiceFailsAndRollBackUserService() throws Exception {
+        repository.save(
+                Credential.builder()
+                        .userId(1L)
+                        .login("login")
+                        .passwordHash(encoder.encode("password"))
+                        .build()
+        );
+
+        wireMock.stubFor(WireMock.post(urlPathEqualTo("/users"))
+                .willReturn(aResponse()
+                        .withStatus(201)
+                        .withHeader("Content-Type", "application/json")
+                        .withBody(USER_RESPONSE)));
+
+        wireMock.stubFor(WireMock.delete(urlPathEqualTo("/users/1"))
+                .willReturn(aResponse()
+                        .withStatus(204)));
+
+        mockMvc.perform(post("/auth/register")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(FULL_REQUEST_DTO))
+                .andExpect(status().isBadRequest());
+
+        wireMock.verify(exactly(1), deleteRequestedFor(urlPathEqualTo("/users/1")));
+    }
+
+    @Test
+    void register_ShouldReturnErrorWhenAuthServiceFailsAndFailDeleteUser() throws Exception {
+        repository.save(
+                Credential.builder()
+                        .userId(1L)
+                        .login("login")
+                        .passwordHash(encoder.encode("password"))
+                        .build()
+        );
+
+        wireMock.stubFor(WireMock.post(urlPathEqualTo("/users"))
+                .willReturn(aResponse()
+                        .withStatus(201)
+                        .withHeader("Content-Type", "application/json")
+                        .withBody(USER_RESPONSE)));
+
+        wireMock.stubFor(WireMock.delete(urlPathEqualTo("/users/1"))
+                .willReturn(aResponse()
+                        .withStatus(503)));
+
+        mockMvc.perform(post("/auth/register")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(FULL_REQUEST_DTO))
+                .andExpect(status().isBadRequest());
+
+        wireMock.verify(exactly(1), deleteRequestedFor(urlPathEqualTo("/users/1")));
     }
 
     @Test
