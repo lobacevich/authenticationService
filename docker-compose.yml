@@ -1,7 +1,7 @@
 services:
   app:
     build: .
-    container_name: user-auth
+    container_name: auth-service
     ports:
       - "8081:8081"
     depends_on:
@@ -14,6 +14,7 @@ services:
       DB_PASSWORD: postgres
       DB_DRIVER: org.postgresql.Driver
       JWT_SECRET: VKs3X6p9e8R2tY5w7z9C1f4H6J8kL0nP2qR4sT6uV8wX0yZ2b4c6d8e0f2g4h6j8k0
+      USER_SERVICE_URL: http://user-service:8082
 
   postgres:
     image: postgres:17.6
@@ -25,7 +26,7 @@ services:
     ports:
       - "5433:5432"
     volumes:
-      - postgres_data:/var/lib/postgresql/data
+      - auth_postgres_data:/var/lib/postgresql/data
     healthcheck:
       test: [ "CMD-SHELL", "pg_isready -U postgres" ]
       interval: 10s
