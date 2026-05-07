@@ -21,7 +21,7 @@ import org.springframework.security.web.authentication.UsernamePasswordAuthentic
 @EnableMethodSecurity
 public class SecurityConfig {
 
-    public static final String[] PERMIT_ALL = {"/auth/**", "/actuator/**"};
+    private static final String[] PERMIT_ALL = {"/auth/**", "/actuator/**"};
 
     private final JwtAuthenticationEntryPoint jwtAuthenticationEntryPoint;
     private final JwtAuthenticationFilter jwtAuthenticationFilter;
